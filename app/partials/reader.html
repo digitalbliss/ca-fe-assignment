@@ -1,0 +1,25 @@
+<h2>Hacker News Reader</h2>
+
+<select ng-model="selectedList"/>
+    <option value="">What should I get you?</option> 
+    <option value="stories-600">Last 600 stories</option>
+    <option value="posts">Posts of last week</option>
+</select>
+<button ng-click="onRetrieveClicked()" >Retrieve</button>
+
+<br/>
+<br/>
+<h3>{{message}}</h3>
+<br/>
+Status: {{apiStatus}}<br/>
+No. of entries retrieved: {{latestEntries.length}}<br/>
+No. of stories found: {{storiesRetrieved}}<br/>
+No. of words found: {{sortedWordCount.length}}<br/>
+<br/>
+<h3>Results</h3>
+<ul> 
+    <li ng-repeat="word in sortedWordCount | orderBy:'-count' | limitTo:10 track by $index " >
+        {{word.word}} - {{word.count}}
+    </li>
+</ul>
+
