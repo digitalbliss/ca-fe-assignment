@@ -86,9 +86,9 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
         }
 
         /*
-            Main method for making the GET requests./
+            Main method for making the GET requests.
             Returns the result on success and error
-            so that its handled by the caller.
+            so that it's handled by the caller.
         */
         hnAPI.get = function(inputUrl) {
 
@@ -120,10 +120,13 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
             hnAPI.reset();
             startTime = new Date().getTime();
             hnAPI.status = 'Getting maxitem';
+
+            // get the last item id so we can start counting down
+            // from that.
             hnAPI.get('maxitem.json').then(function(data){
                 hnAPI.status = 'Got maxitem';
 
-                //store the latest entry id
+                // store the latest entry id
                 hnAPI.currentEntryId = data.data;
 
                 // kickoff the selected process
@@ -156,7 +159,6 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
                 if (hnAPI.storiesRetrieved >= hnAPI.numberOfStoriesToRetrieve) {
                     break;
                 }
-
                 countWords(hnAPI.batchResults[i].text);
             }
             hnAPI.batchResults = [];
@@ -177,6 +179,7 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
                 hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
 
                 hnAPI.get('item/' + entryId + '.json').then(function(response) {
+
                     // storing the entry id we tried.
                     hnAPI.latestEntries.push(entryId);
                     currentBatchCount++;
@@ -238,8 +241,8 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
         }
 
         /*
-            Retrieves and processes the number of stories required
-            one at a time.
+            Retrieves and processes the number of stories 
+            required one at a time.
         */
         hnAPI.retrieveStories = function () {
             hnAPI.status = 'Retrieving Entries';
@@ -314,7 +317,7 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
                             countWords(responseData.text);
                         }
 
-                        // if the response is less than a week old process it
+                        // if the response is less than a week old finish the process
                         if (response.time >= lastWeekInSeconds) {
                             endTime = new Date().getTime();
                             hnAPI.status = 'Finished';
@@ -337,7 +340,7 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
         }
 
         /*
-            Used to reset state
+            Used to reset state for the next request
         */
         hnAPI.reset = function (){
             hnAPI.wordCount = {};

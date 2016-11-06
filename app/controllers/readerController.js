@@ -1,4 +1,3 @@
-
 'use strict';
 
 angular.module('hnReader').controller('ReaderCtrl',
@@ -22,7 +21,6 @@ angular.module('hnReader').controller('ReaderCtrl',
                 $scope.message = '...and done!';
                 $scope.timeTaken = hnAPI.timeTaken;
             }
-            
         }, true);
 
         $scope.$watch( function () { return hnAPI.storiesRetrieved; }, function (storiesRetrieved) {
@@ -38,7 +36,6 @@ angular.module('hnReader').controller('ReaderCtrl',
             $scope.sortedWordCount = wordCountArray;
         }, true);
 
-
         $scope.selectedList = '';
         $scope.onRetrieveClicked = onRetrieveClicked;
         $scope.latestEntries = hnAPI.latestEntries;
@@ -47,16 +44,4 @@ angular.module('hnReader').controller('ReaderCtrl',
         $scope.sortedWordCount = hnAPI.wordCountArray;
         $scope.message = '';
         $scope.timeTaken = hnAPI.timeTaken;
-
-        // $scope.$watchCollection("collection", function( newValue, oldValue ) {
-        //         console.log(newValue);
-        //         $scope.wordCount = hnAPI.wordCount;
-        //         $scope.worstoriesRetrieveddCount = hnAPI.storiesRetrieved;
-        //         $scope.apiStatus = hnAPI.status;
-        //         $scope.sortedWordCount = hnAPI.sortedWordCount;
-        //     }
-        // );
-        // $scope.collection = [{
-        //         entriesRetrieved: hnAPI.latestEntries
-        // }];
 }]);

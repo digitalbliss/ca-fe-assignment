@@ -1,9 +1,8 @@
 {
-  "name": "angular-seed",
-  "private": true,
-  "version": "0.0.0",
-  "description": "A starter project for AngularJS",
-  "repository": "https://github.com/angular/angular-seed",
+  "name": "ca-fe-assignment",
+  "version": "1.0.0",
+  "description": "My take on the Bleeve assignment",
+  "repository": "https://github.com/digitalbliss/ca-fe-assignment",
   "license": "MIT",
   "devDependencies": {
     "bower": "^1.7.7",

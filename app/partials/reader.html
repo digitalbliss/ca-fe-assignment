@@ -20,7 +20,7 @@ Time to retrieval completion: {{timeTaken}}ms<br/>
 <br/>
 <h3>Results</h3>
 <ul> 
-    <li ng-repeat="word in sortedWordCount | orderBy:'-count' | limitTo:10 track by $index " >
+    <li ng-repeat="word in sortedWordCount | orderBy:'-count' | limitTo:10 track by $index ">
         {{word.word}} - {{word.count}}
     </li>
 </ul>
