@@ -104,6 +104,7 @@ select{
 }
 #main-content-container {
 	padding: 0px 8%;
+	width: 90%;
 }
 
 .menu li {

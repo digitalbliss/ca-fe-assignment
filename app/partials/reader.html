@@ -3,6 +3,7 @@
 <select ng-model="selectedList"/>
     <option value="">What should I get you?</option> 
     <option value="stories-600">Last 600 stories</option>
+    <option value="stories-600-batch">Last 600 stories - Batch</option>
     <option value="posts">Posts of last week</option>
 </select>
 <button ng-click="onRetrieveClicked()" >Retrieve</button>
@@ -15,6 +16,7 @@ Status: {{apiStatus}}<br/>
 No. of entries retrieved: {{latestEntries.length}}<br/>
 No. of stories found: {{storiesRetrieved}}<br/>
 No. of words found: {{sortedWordCount.length}}<br/>
+Time to retrieval completion: {{timeTaken}}ms<br/>
 <br/>
 <h3>Results</h3>
 <ul> 

@@ -1,1 +1,83 @@
-<p>This is the explanation for the app</p>
+<h2>Instructions</h2>
+
+<p>
+Choose an option from the dropdown and click 
+on "retrieve" to commence the request of your
+choise. You shouldn't fire off a second request
+while the first one is running on the same page
+as the state will reset but the outstanding requests
+will keep on going.
+</p>
+
+<p>
+After one retrieval is finished you can start a second one.
+Results are updated as they are processed to give the user
+a sense of progress.
+</p>
+
+<h2>Explanation</h2>
+<p>Initially I started working on the three 
+different requirements but I didn't find anything
+particularly interesting in that.</p>
+
+<p>I implemented the last 600 stories and the last week's
+stories count based on how I understood the requirements
+I don't know if that's accurate but given that
+I see this exercise more as a demostration of my programming
+skill and a subject on which we can converse I didn't
+clarify these requirements and most of my assumptions
+are documented on the code.</p>
+
+<p>I found the question of how it would be more 
+efficient to make the requests to be interesting
+so I played with that a little bit more in depth.</p>
+
+<p>What I did is implement the 600 stories request in two
+different ways:</p>
+
+<p>
+In the first I fire off the requests sequentially and 
+process them one at a time as the responses come in.</p>
+
+<p>
+In the second I batch the requests in groups and wait for all 
+of them to finish before processing that batch of results.
+For the sake of my curiosity I experimented with different batch
+sizes but of course that is restricted in the browser by the number
+of concurent requests allowed. I used Chrome in development
+and that number for Chrome is 6.</p>
+
+<p>
+I used the angular seed project to setup the project
+so that I wouldn't have to spend anytime on that,
+so bear in mind that the project structure is far from
+ideal and definetely not what I would do in a proper app.
+</p>
+
+<p>
+I created a very basic structure for the Angular app as
+the bulk of my work has gone into the hnAPI file where I
+make the requests, everything else is rudimentary and only
+there to make everything work together.
+</p>
+
+<p>
+I didn't want to spend a lot more than the 4hrs so the code
+is definetely not refactored properly or cleaned up in detail
+but I did add comments in the API to explain the logic.
+</p>
+<p>
+For the styling I copied the css file from my website
+just for the sake of my own OCD and because everyone likes
+looking at prettier things.
+</p>
+
+<p>
+In the markup payed the least attention possible so I am just 
+dumping the results.
+</p>
+
+<p>
+Succinctly its buggy, its ugly but I think we will have
+things to talk about :)
+</p>

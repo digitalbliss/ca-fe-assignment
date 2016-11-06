@@ -11,9 +11,15 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
             status: 'Ready',
             storiesRetrieved: 0,
             numberOfStoriesToRetrieve: 600,
-            wordCountArray: []
+            wordCountArray: [],
+            batchSize: 6,
+            batchResults: [],
+            timeTaken: 0
         },
-        baseUrl = 'https://hacker-news.firebaseio.com/v0/';
+        baseUrl = 'https://hacker-news.firebaseio.com/v0/',
+        batchResults = [],
+        startTime=0,
+        endTime=0;
 
         /*
             Utility method used to convert an array
@@ -31,54 +37,42 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
         }
 
         /*
-            Used to do the word count using an object
-            for the convinience of the syntax
+            Takes as input an array of strings and creates new objects in 
+            hnAPI.wordCountArray or increments their count if they already exist
         */
-        function addToWordCount(inputArray) {
+        function addArrayToWordCount(inputArray) {
 
             for (var i = 0; i < inputArray.length; i++) {
 
-                var word = inputArray[i];
+                var newWord = inputArray[i];
+                var isFirstInput = hnAPI.wordCountArray.length === 0? true: false;
 
-                if (hnAPI.wordCount.hasOwnProperty(word)) {
-                    hnAPI.wordCount[word].count = hnAPI.wordCount[word].count + 1;
+                // first word in the wordCountArray, create and push the object
+                if (isFirstInput) {
+                    hnAPI.wordCountArray.push({count: 1, word: newWord});
                 } else {
-                    hnAPI.wordCount[word] = {count: 1, word: word};
+
+                    //go through the word count array 
+                    for (var x = 0; x < hnAPI.wordCountArray.length; x++) {
+
+                        // check if it is an existing word and increment count if so
+                        if (hnAPI.wordCountArray[x].word === newWord) {
+                            hnAPI.wordCountArray[x].count++;
+                            break;
+                        } else if (x === hnAPI.wordCountArray.length - 1) {
+                            // otherwise add an object at the last position
+                            hnAPI.wordCountArray.push({count: 1, word: newWord});
+                            break;
+                        }
+                    }
                 }
             }
         }
 
         /*
-            Used to convert the word count object into
-            an array for sorting and displaying in the UI
-        */
-        function wordCountToArray() {
-
-            var array = [];
-
-            for (var word in hnAPI.wordCount) {
-
-              if (hnAPI.wordCount.hasOwnProperty(word)) {
-                array.push(hnAPI.wordCount[word]);
-              }
-            }
-            return array;
-        }
-
-        /*
-            Simple method used to sort an array
-        */
-        function sortWordCount(inputArray) {
-            return inputArray.sort(function(a, b){
-                return a.count - b.count;
-            });
-        }
-
-        /*
-            Very simplistic method for counting words
             Uses a simple regex to get the words from the input text
             and then converts them to lowercase so that we can ignore
-            case in the count
+            case in the count. Finally adds them to the count.
         */
         function countWords(text) {
 
@@ -87,12 +81,14 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
             // transform to lowercase 
             var lowerCaseWords = arrayToLowercase(words);
 
-            //and add to our current count
-            addToWordCount(lowerCaseWords);
+            // and add to our current count
+            addArrayToWordCount(lowerCaseWords);
         }
 
         /*
-            Main method for making the GET requests.
+            Main method for making the GET requests./
+            Returns the result on success and error
+            so that its handled by the caller.
         */
         hnAPI.get = function(inputUrl) {
 
@@ -115,12 +111,14 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
         };
 
         /* 
-            Entry point for the UI
+            Entry point for the UI takes as input a 
+            string representing a task and starts execution.
         */
         hnAPI.startProcess = function(task) {
 
-            //reseting so that we get fresh results
+            // reseting so that we get fresh results
             hnAPI.reset();
+            startTime = new Date().getTime();
             hnAPI.status = 'Getting maxitem';
             hnAPI.get('maxitem.json').then(function(data){
                 hnAPI.status = 'Got maxitem';
@@ -128,108 +126,213 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
                 //store the latest entry id
                 hnAPI.currentEntryId = data.data;
 
-                // kickoff the appropriate process
+                // kickoff the selected process
                 if (task === 'stories-600') {
                     hnAPI.retrieveStories();
                 } else if (task === 'posts') {
                     hnAPI.retrieveLastWeeksStories();
+                } else if (task === 'stories-600-batch') {
+                    hnAPI.retrieveStoriesBatch();
                 }
             });
         }
 
-        hnAPI.retrieveStories = function () {
+        // for error handling just logs the failed request.
+        function handleError(failedRequest) {
+            console.error('Something went wrong with this request: ');
+            console.error(failedRequest);
+        }
+
+        /* 
+            Used to process the batch results.
+            Goes through them and counts the words
+            empties the array for later processing calls.
+        */
+        function processBatchResults() {
+
+            for (var i = 0; i < hnAPI.batchResults.length; i++) {
+
+                // stop batch processing if we have reached the desired number of stories
+                if (hnAPI.storiesRetrieved >= hnAPI.numberOfStoriesToRetrieve) {
+                    break;
+                }
+
+                countWords(hnAPI.batchResults[i].text);
+            }
+            hnAPI.batchResults = [];
+        }
+
+        /* 
+            Executes the next batch of requests.
+        */
+        function retrieveNextBatch() {
 
             var deferred = $q.defer();
+            var currentBatchCount = 0;
 
             function getEntry(entryId) {
-                var lastWeekInSeconds = Date.now() *1000 - (60*60*24*7);
+                // updating the entryId now means that we don't care 
+                // if it fails or succeeds as each entryId will be tried 
+                // only once.
+                hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
 
-                hnAPI.get('item/' + entryId + '.json').then(function(data){
-                    hnAPI.status = 'Retrieving Entries';
-                    var response = data.data;
-                    hnAPI.latestEntries.push(response);
-                    hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
+                hnAPI.get('item/' + entryId + '.json').then(function(response) {
+                    // storing the entry id we tried.
+                    hnAPI.latestEntries.push(entryId);
+                    currentBatchCount++;
 
-                    // Using text only to get results quicker
-                    // if (response.type === 'story' && response.text) {
-                    if (response.text) {
-                    
-                        hnAPI.storiesRetrieved = hnAPI.storiesRetrieved + 1;
-                        countWords(response.text);
-                        hnAPI.wordCountArray = wordCountToArray();
-                        hnAPI.wordCountArray = sortWordCount(hnAPI.wordCountArray);
-                    }
+                    // sometimes the statusText is OK but the data is null
+                    // so we log that as an error.
+                    if (response.statusText === 'OK' && response.data) {
 
-                    // resolve when we have reached the number of stories to retrieve
-                    if (hnAPI.storiesRetrieved >= hnAPI.numberOfStoriesToRetrieve) {
-                        hnAPI.status = 'Finished';
-                        deferred.resolve(data.data);
-                    } else { //else keep going
-                        getEntry(hnAPI.currentEntryId);
+                        var responseData = response.data;
+                        // Using text only to get results quicker alternatively use:
+                        // if (response.type === 'story' && response.text) {
+                        if (responseData.text) {
+                            hnAPI.storiesRetrieved = hnAPI.storiesRetrieved + 1;
+                            hnAPI.batchResults.push(responseData);
+                        }
+
+                        if (currentBatchCount === hnAPI.batchSize){
+                             deferred.resolve('Finished Batch');
+                        }
+                    } else {
+                        handleError(response);
+
+                        if (currentBatchCount === hnAPI.batchSize){
+                             deferred.resolve('Finished Batch');
+                        }
                     }
                 });
             }
-            //TODO: Error handling
+
+            // Fire off all of the requests in a specific batch size
+            for (var i = 0; i < hnAPI.batchSize; i++) {
+                getEntry(hnAPI.currentEntryId);
+            }
+
+            return deferred.promise;
+        }
+
+        /*
+            Fires off the request batches until the required number
+            of stories retrieved is reached
+        */
+        hnAPI.retrieveStoriesBatch = function () {
+            hnAPI.status = 'Retrieving Entries';
+
+            retrieveNextBatch().then(function(){
+                processBatchResults();
+
+                // if we retrieved enough stories stop the porcess and count the time
+                if (hnAPI.storiesRetrieved >= hnAPI.numberOfStoriesToRetrieve) {
+                    endTime = new Date().getTime();
+                    hnAPI.status = 'Finished';
+                    var time = endTime - startTime;
+                    hnAPI.timeTaken = time;
+                } else {
+                    // otherwise rinse and repeat
+                    hnAPI.retrieveStoriesBatch();
+                }
+            });
+        }
+
+        /*
+            Retrieves and processes the number of stories required
+            one at a time.
+        */
+        hnAPI.retrieveStories = function () {
+            hnAPI.status = 'Retrieving Entries';
+
+            function getEntry(entryId) {
+                hnAPI.latestEntries.push(entryId);
+                hnAPI.get('item/' + entryId + '.json').then(function(response) {
+
+                    // sometimes the statusText is OK but the data is null
+                    // so we log that as an error.
+                    if (response.statusText === 'OK' && response.data) {
+
+                        var responseData = response.data;
+
+                        // Using text only to get results quicker alternatively use:
+                        // if (response.type === 'story' && response.text) {
+                        if (responseData.text) {
+                            hnAPI.storiesRetrieved = hnAPI.storiesRetrieved + 1;
+                            countWords(responseData.text);
+                        }
+
+                        // resolve when we have reached the number of stories to retrieve
+                        if (hnAPI.storiesRetrieved >= hnAPI.numberOfStoriesToRetrieve) {
+                            endTime = new Date().getTime();
+                            hnAPI.status = 'Finished';
+                            var time = endTime - startTime;
+                            hnAPI.timeTaken = time;
+                        } else { //else keep going
+                            hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
+                            getEntry(hnAPI.currentEntryId);
+                        }
+                    } else {
+                        handleError(response);
+
+                        // and keep going
+                        hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
+                        getEntry(hnAPI.currentEntryId);
+                    }   
+                });
+            }
+
             getEntry(hnAPI.currentEntryId);
         }
 
-
-        /*
-            Retrieves the stories for last week
+        /*  
+            Retrieves and processes last week's stories
+            one at a time.
         */
         hnAPI.retrieveLastWeeksStories = function () {
 
-            var deferred = $q.defer();
-
             // simplified version of last week 60 seconds * 60 minutes * 24 hours * 7 days
             // not sure what we meant by exactly last week
-            // var lastWeekInSeconds = (Date.now()/1000) - (60*60*24*7);
+            var lastWeekInSeconds = (Date.now()/1000) - (60*60*24*7);
             // past couple of hours for something quicker
-            var lastWeekInSeconds = (Date.now()/1000) - (60*60*2);
+            // var lastWeekInSeconds = (Date.now()/1000) - (60*60*2);
+            hnAPI.status = 'Retrieving Entries';
 
             function getEntry(entryId) {
-                hnAPI.get('item/' + entryId + '.json').then(function(data){
+                hnAPI.latestEntries.push(entryId);
+                hnAPI.get('item/' + entryId + '.json').then(function(response) {
 
-                    // let the user know the job is in progress
-                    hnAPI.status = 'Retrieving Entries';
+                    // sometimes the statusText is OK but the data is null
+                    // so we log that as an error.
+                    if (response.statusText === 'OK' && response.data) {
 
-                    var response = data.data;
-                    hnAPI.latestEntries.push(response);
+                        var responseData = response.data;
 
-                    //counting down the entry numbers
-                    hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
-
-                    if (!response) {
-                        //TODO: Queue and repeat
-                        console.error('a request returned null!!');
-                        getEntry(hnAPI.currentEntryId);
-                    } 
-
-                    // if the response is less than a week old process it
-                    else if (response.time >= lastWeekInSeconds) {
-
-                        // but only if it contains text
-                        if (response.text) {
+                        // Using text only to get results quicker alternatively use:
+                        // if (response.type === 'story' && response.text) {
+                        if (responseData.text) {
                             hnAPI.storiesRetrieved = hnAPI.storiesRetrieved + 1;
-
-                            countWords(response.text);
-                            hnAPI.wordCountArray = wordCountToArray();
-                            // Sorting now so that I can keep updating the UI and 
-                            // give the user a sense of progress it would have been 
-                            // more efficient to do this only once at the end
-                            hnAPI.wordCountArray = sortWordCount(hnAPI.wordCountArray);
+                            countWords(responseData.text);
                         }
 
-                        // and move on to the next one
-                        getEntry(hnAPI.currentEntryId);
+                        // if the response is less than a week old process it
+                        if (response.time >= lastWeekInSeconds) {
+                            endTime = new Date().getTime();
+                            hnAPI.status = 'Finished';
+                            var time = endTime - startTime;
+                            hnAPI.timeTaken = time;
+                        } else { //else keep going
+                            hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
+                            getEntry(hnAPI.currentEntryId);
+                        }
                     } else {
-                        //else resolve
-                        hnAPI.status = 'Finished';
-                        deferred.resolve(data.data);
-                    }
+                        handleError(response);
+
+                        // and keep going
+                        hnAPI.currentEntryId = hnAPI.currentEntryId - 1;
+                        getEntry(hnAPI.currentEntryId);
+                    }   
                 });
             }
-            //TODO: Error handling
             getEntry(hnAPI.currentEntryId);
         }
 
@@ -239,13 +342,13 @@ angular.module('hnReader').factory('hnAPI', ['$http','$q',
         hnAPI.reset = function (){
             hnAPI.wordCount = {};
             hnAPI.latestEntries = [];
-            hnAPI.latestEntries = [];
             hnAPI.wordCount = {};
             hnAPI.sortedWordCount = [];
             hnAPI.currentEntryId = 0;
             hnAPI.status = 'Ready';
             hnAPI.storiesRetrieved = 0;
             hnAPI.wordCountArray = [];
+            hnAPI.timeTaken = 0;
         }
 
         return hnAPI;

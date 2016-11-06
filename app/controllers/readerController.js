@@ -20,6 +20,7 @@ angular.module('hnReader').controller('ReaderCtrl',
 
             if (status === 'Finished') {
                 $scope.message = '...and done!';
+                $scope.timeTaken = hnAPI.timeTaken;
             }
             
         }, true);
@@ -45,6 +46,7 @@ angular.module('hnReader').controller('ReaderCtrl',
         $scope.apiStatus = hnAPI.status;
         $scope.sortedWordCount = hnAPI.wordCountArray;
         $scope.message = '';
+        $scope.timeTaken = hnAPI.timeTaken;
 
         // $scope.$watchCollection("collection", function( newValue, oldValue ) {
         //         console.log(newValue);
